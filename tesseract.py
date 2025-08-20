@@ -2,14 +2,16 @@ from pdf2image import convert_from_path
 import cv2
 import numpy as np
 import pytesseract
+import ast
 import openai
 from dotenv import load_dotenv
 from openai import OpenAI
 import os
+import re
+import json
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 openai = OpenAI(api_key=api_key)
-pdf_file = 'example_1.pdf'
 all_words = []
 keys_of_interest = ['block_num','left','top','width','height' ,'text']
 def plot_boxes(curr_elem_idx,img):
@@ -46,6 +48,7 @@ def ask_llm(content):
                     "the signature will probably be in one or more pages but not all or many pages."
                     "the output should only be the page number and the bounding box coordinates as an array [pagenum , xmin, ymin , xmax, ymax]."
                     "you should output  nothing but an array of arrays containing [pagenum , xmin, ymin , xmax, ymax] "
+                    "DO NOT INCLUDE ANYTHING IN THE OUTpUT EXCEPT AN ARRAY OF ARRAYS this is strict"
                 )
             },
             {
@@ -71,19 +74,20 @@ def box_to_point(top_left, bottom_right):
 
 
 def find_nearest_box(points,sig):
-    mini = float('-inf')
-    mini_idx = float('-inf')
+    mini = float('inf')
+    mini_idx = float('inf')
     for idx , point in enumerate(points):
         euclidean_distance = abs(point[0] - sig[0] ) **2  + abs(point[1] - sig[1])**2
         if euclidean_distance < mini:
             mini = euclidean_distance
             mini_idx = idx
+    print("returning index " , mini_idx)
     return mini_idx
 
 
 image_exts= ['.jpg', '.png', '.jpeg']
 
-def check_context(text_arr):
+def check_context(text_arr,pdf_file):
     final_llm_res  = []
     if pdf_file.endswith('.pdf'):
         print("converting pdf file to images >> ")
@@ -105,18 +109,32 @@ def check_context(text_arr):
             curr_elem_idx+=len(data['level'])
     ##print(all_words)
         final_res = ask_llm(content=all_words)
-        print ('final res', final_res)
+        print("Raw LLM output:", final_res)
+
+        # Remove any characters before or after the array
+        match = re.search(r'\[\s*\[.*\]\s*\]', final_res.replace('\n',''))
+        if match:
+            final_res_clean = match.group(0)
+            final_res = ast.literal_eval(final_res_clean)
+        else:
+            final_res = []
+
+        print("Parsed array:", final_res)
+        print("parsed ARRAY TYPE" ,  type(final_res))
         box_points_arr = []
+
         for elem in final_res:
+            sig = box_to_point((elem[1],elem[2]),(elem[3],elem[4]))
             llm_page =  elem[0]
             print("LLM POTENTIAL page >> ",llm_page)
             text_boxes = text_arr[llm_page]
             for i in  text_boxes:
                 box_points_arr.append(box_to_point(i[0],i[1]))
-                sig = box_to_point((elem[0],elem[1]),(elem[2],elem[3]))
-            idx = find_nearest_box(box_points_arr,sig)
-            print('closest to llm ====  ' ,text_boxes[idx])
-            final_llm_res.append((llm_page,idx))
+
+            if box_points_arr:
+                idx = find_nearest_box(box_points_arr,sig)
+                print('closest to llm ====  ' ,text_boxes[idx])
+                final_llm_res.append((llm_page,idx))
         return final_llm_res
 
 

@@ -64,7 +64,7 @@ def run_inference(img):
             #view_image(cropped_with_sig,'cropped image')
             ##### will need the  page number in the image too as well as the signature bbox to crop #####
 
-img_path = 'example_1.pdf'
+img_path = 'test_2.pdf'
 many  = False
 if img_path.endswith(".pdf"):
     many = True
@@ -101,13 +101,16 @@ if many :
     else:
         print("cant find signatures --- defaulting to lLM instead! ")
         print('*'*10)
-        res = check_context(text_arr)
+        res = check_context(text_arr,img_path)
         for signature in res:
             signature_page = signature[0]
             signature_idx = signature[1]
             top_left , bottom_right = text_arr[signature_page][signature_idx]
-            cv2.rectangle(images[signature_page-1], bottom_right,(0,255,0) , 2)
-            
+            final = np.array(images[signature_page-1])
+            im = np.array(images[signature_page-1])
+            im = cv2.cvtColor(im,cv2.COLOR_BGR2RGB)
+            cv2.rectangle(im, top_left, bottom_right,(0,255,0) , 2)    
+            view_image(im,"llm based") 
 else:
     print("single imge")
     run_inference(images)
