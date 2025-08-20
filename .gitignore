@@ -1,0 +1,11 @@
+images/
+masks/
+text_sig_dataset/
+cropped_imgs/
+*.pdf
+create_signatures.py.zip
+images.zip
+masks.zip
+*.pt
+*.pth
+*.env
