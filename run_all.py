@@ -64,7 +64,8 @@ def run_inference(img):
             #view_image(cropped_with_sig,'cropped image')
             ##### will need the  page number in the image too as well as the signature bbox to crop #####
 
-img_path = 'test_2.pdf'
+# img_path = 'test_2.pdf'
+img_path = 'C:/Users/ml/Downloads/KSIA_FILES_DEMO/Signature Button/Alinma financial final pdf2.pdf'
 many  = False
 if img_path.endswith(".pdf"):
     many = True
